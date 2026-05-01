@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  min-height: 100dvh;
+  overflow: hidden;
+  background: radial-gradient(circle at 20% 20%, #2b145f 0%, #120a2f 45%, #07030f 100%);
+}
+
+.soft-glass {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}

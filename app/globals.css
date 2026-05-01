@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-neon-bg text-white antialiased;
+}
+
+.game-gradient {
+  background: radial-gradient(circle at top, rgba(134, 249, 255, 0.2), transparent 40%),
+    radial-gradient(circle at bottom, rgba(255, 126, 219, 0.22), transparent 40%),
+    #0b1020;
+}

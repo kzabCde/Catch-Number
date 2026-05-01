@@ -25,12 +25,12 @@ export function FloatingEmoji({
       aria-label={`อิโมจิสุ่มเลข ${data.id}`}
       disabled={disabled}
       onClick={() => onPick(data.number, data.id)}
-      className="absolute select-none text-4xl drop-shadow-[0_0_12px_rgba(255,255,255,0.9)] sm:text-5xl"
+      className="absolute select-none text-6xl drop-shadow-[0_0_12px_rgba(255,255,255,0.9)] sm:text-7xl"
       style={{ left: `${data.x}%`, top: `${data.y}%`, filter: "blur(0.1px)" }}
       animate={{
-        y: [0, -15, 0, 10, 0],
-        x: [0, 8, -8, 0],
-        rotate: [0, -4, 4, 0],
+        y: [0, -24, 0, 16, 0],
+        x: [0, 14, -14, 0],
+        rotate: [0, -7, 7, 0],
       }}
       transition={{
         duration: data.duration,

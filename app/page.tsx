@@ -22,7 +22,7 @@ function generateRound() {
     number: numbers[id],
     x: 8 + Math.random() * 80,
     y: 12 + Math.random() * 70,
-    duration: 5 + Math.random() * 4,
+    duration: 2.8 + Math.random() * 1.8,
   }));
 }
 

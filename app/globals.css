@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+}
+
+.bg-pastel-neon {
+  background: radial-gradient(circle at 20% 20%, rgba(255, 173, 233, 0.45), transparent 40%),
+    radial-gradient(circle at 80% 15%, rgba(163, 248, 255, 0.45), transparent 45%),
+    radial-gradient(circle at 60% 75%, rgba(196, 255, 175, 0.35), transparent 45%),
+    linear-gradient(130deg, #f8e8ff 0%, #def9ff 50%, #ecffe6 100%);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 12px 35px rgba(143, 138, 255, 0.2);
+  backdrop-filter: blur(14px);
+}

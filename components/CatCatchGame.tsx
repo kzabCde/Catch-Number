@@ -1,25 +1,6 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Ball } from '@/lib/types';
-
-const BALL_COUNT = 18;
-const PAD = 24;
-
-const createBalls = (w: number, h: number): Ball[] =>
-  Array.from({ length: BALL_COUNT }, (_, id) => ({
-    id,
-    value: String(Math.floor(Math.random() * 100)).padStart(2, '0'),
-    x: PAD + Math.random() * (w - 2 * PAD),
-    y: PAD + Math.random() * (h - 2 * PAD),
-    vx: (Math.random() * 2 + 0.8) * (Math.random() > 0.5 ? 1 : -1),
-    vy: (Math.random() * 2 + 0.8) * (Math.random() > 0.5 ? 1 : -1),
-    size: 42 + Math.random() * 22
-  }));
-
-export default function CatCatchGame() {
-  const arenaRef = useRef<HTMLDivElement>(null);
   const [balls, setBalls] = useState<Ball[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [winner, setWinner] = useState<Ball | null>(null);
@@ -27,84 +8,50 @@ export default function CatCatchGame() {
   const [soundOn, setSoundOn] = useState(true);
   const [musicOn, setMusicOn] = useState(false);
   const [dark, setDark] = useState(true);
-  const [cat, setCat] = useState({ x: 40, y: 40, face: '😺' });
-
-  const dimensions = useMemo(() => {
-    const node = arenaRef.current;
-    return { w: node?.clientWidth ?? 360, h: node?.clientHeight ?? 420 };
-  }, [balls.length]);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark);
-  }, [dark]);
-
-  useEffect(() => {
-    setBalls(createBalls(dimensions.w, dimensions.h));
-  }, [dimensions.h, dimensions.w]);
-
-  useEffect(() => {
-    if (!isPlaying || winner) return;
-    let raf = 0;
-    const loop = () => {
-      setBalls((prev) => {
-        const updated = prev.map((ball) => {
-          let x = ball.x + ball.vx;
-          let y = ball.y + ball.vy;
-          let vx = ball.vx;
-          let vy = ball.vy;
-
-          if (x < PAD || x > dimensions.w - PAD) vx *= -1;
-          if (y < PAD || y > dimensions.h - PAD) vy *= -1;
-
-          x = Math.min(Math.max(x, PAD), dimensions.w - PAD);
-          y = Math.min(Math.max(y, PAD), dimensions.h - PAD);
-          return { ...ball, x, y, vx, vy };
-        });
-
-        const target = updated[Math.floor(Math.random() * updated.length)];
-        if (target) {
-          setCat((prevCat) => ({
-            x: prevCat.x + (target.x - prevCat.x) * 0.06,
-            y: prevCat.y + (target.y - prevCat.y) * 0.06,
-            face: ['😺', '😸', '😻'][Math.floor(Math.random() * 3)]
-          }));
-
-          const dx = cat.x - target.x;
-          const dy = cat.y - target.y;
-          if (Math.hypot(dx, dy) < 32) {
-            setWinner(target);
-            setHistory((h) => [target.value, ...h].slice(0, 20));
-            setIsPlaying(false);
-            if (soundOn) new Audio('/meow.mp3').play().catch(() => undefined);
-            if ('vibrate' in navigator) navigator.vibrate(140);
-          }
+    (ball: Ball) => {
+      setCat((prev) => ({ ...prev, x: ball.x, y: ball.y, mood: `จับได้เลข ${ball.value}!` }));
+      if (soundOn) {
+        const Ctx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (Ctx) {
+          const ctx = new Ctx();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.value = 520;
+          gain.gain.value = 0.001;
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.03);
+          osc.frequency.exponentialRampToValueAtTime(390, ctx.currentTime + 0.16);
+          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.26);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.27);
         }
+    [soundOn]
+      setBalls((prevBalls) =>
+        prevBalls.map((ball) => {
+        })
+      );
+  }, [isPlaying, winner, dimensions.w, dimensions.h]);
+    setCat({ x: 60, y: dimensions.h - 90, mood: 'แตะลูกบอลเพื่อสุ่มเลข' });
+  const handleArenaTouch = (clientX: number, clientY: number) => {
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    setCat((prev) => ({ ...prev, x, y, mood: 'กำลังแตะจับลูกบอล' }));
+    const hit = balls.find((ball) => Math.hypot(x - ball.x, y - ball.y) <= ball.size * 0.6);
+    if (hit) stopWithWinner(hit);
 
-        return updated;
-      });
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, [isPlaying, winner, dimensions.w, dimensions.h, soundOn, cat.x, cat.y]);
-
-  const start = () => {
-    setWinner(null);
-    setIsPlaying(true);
-    setBalls(createBalls(dimensions.w, dimensions.h));
-  };
-
-  return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-4 p-4">
-      <header className="rounded-3xl bg-neon-card/80 p-4 shadow-neon">
-        <h1 className="text-center text-3xl font-black tracking-wide">🐾 Cat Catch Number</h1>
-        <p className="mt-1 text-center text-sm text-cyan-100">Tap start and let the kitty pick your lucky number!</p>
-        <div className="mt-4 flex flex-wrap justify-center gap-2">
-          <button onClick={start} className="min-h-12 rounded-full bg-cyan-300 px-8 py-3 text-lg font-bold text-slate-900 shadow-neon">START</button>
-          <button onClick={() => setSoundOn((s) => !s)} className="min-h-12 rounded-full bg-white/10 px-4">{soundOn ? '🔊 Sound' : '🔇 Sound'}</button>
-          <button onClick={() => setMusicOn((m) => !m)} className="min-h-12 rounded-full bg-white/10 px-4">{musicOn ? '🎵 Music' : '🎵 Off'}</button>
-          <button onClick={() => setDark((d) => !d)} className="min-h-12 rounded-full bg-white/10 px-4">{dark ? '🌙 Dark' : '☀️ Light'}</button>
-        </div>
+        <h1 className="text-center text-3xl font-black tracking-wide">🐾 แตะลูกบอลเพื่อสุ่มเลข</h1>
+        <p className="mt-1 text-center text-sm text-cyan-100">ผู้เล่นแตะหน้าจอให้โดนลูกบอลได้เลย จะแสดงเลขทันที</p>
+        onPointerDown={(e) => handleArenaTouch(e.clientX, e.clientY)}
+              if (isPlaying) stopWithWinner(ball);
+        <motion.div
+          className="pointer-events-none absolute left-0 top-0 z-20 -translate-x-1/2 -translate-y-1/2"
+        </motion.div>
+            <button onClick={() => navigator.share?.({ title: 'สุ่มเลขด้วยการแตะลูกบอล', text: `วันนี้สุ่มได้ ${winner?.value ?? '--'} 🎉` })} className="min-h-12 rounded-full bg-white/10 px-5">แชร์ผล</button>
+            {history.length === 0 ? <p className="text-sm text-cyan-100">ยังไม่มีประวัติการสุ่ม</p> : history.map((num, i) => (
+              <div key={`${num}-${i}`} className="rounded-xl bg-white/10 px-3 py-2 text-xl font-semibold">ครั้งที่ {i + 1} · {num}</div>
+            ))}
       </header>
 
       <section ref={arenaRef} className="relative h-[52vh] min-h-[360px] overflow-hidden rounded-3xl border border-cyan-200/20 bg-neon-card/70">

@@ -69,7 +69,18 @@ export default function HomePage() {
         </AnimatePresence>
       </motion.div>
 
-      <div className="absolute bottom-8 z-40 flex gap-3">
+      <footer className="absolute bottom-3 left-1/2 z-40 -translate-x-1/2 text-center">
+        <a
+          href="https://nowheredev.vercel.app/"
+          target="_blank"
+          rel="noreferrer"
+          className="text-xs text-purple-700/70 underline decoration-purple-500/40 underline-offset-4 transition hover:text-purple-700"
+        >
+          © 2026 NOWHEREDEV
+        </a>
+      </footer>
+
+      <div className="absolute bottom-10 z-40 flex gap-3">
         {!picked ? (
           <StartButton label="เริ่มสุ่ม" onClick={handleStart} />
         ) : (

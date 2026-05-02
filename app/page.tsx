@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FloatingEmoji } from "@/components/FloatingEmoji";
 import { RevealModal } from "@/components/RevealModal";
@@ -16,6 +16,10 @@ const BALL_COLORS: [string, string][] = [
   ["#90e0ef", "#0077b6"],
 ];
 const BALL_COUNT = 20;
+const AMBIENT_STORAGE_KEY = "ambient-sound";
+const AMBIENT_TARGET_VOLUME = 0.22;
+const FADE_STEP = 0.02;
+const FADE_INTERVAL_MS = 90;
 
 function generateRound() {
   const numbers = Array.from({ length: 100 }, (_, i) => i.toString().padStart(2, "0"));
@@ -27,13 +31,13 @@ function generateRound() {
   return Array.from({ length: BALL_COUNT }, (_, id) => ({
     id,
     number: numbers[id],
-  x: Math.random() * 86,
-  y: Math.random() * 78,
-  size: 52 + Math.random() * 44,
-  vx: (Math.random() * 240 + 120) * (Math.random() > 0.5 ? 1 : -1),
-  vy: Math.random() * 140 - 70,
-  colors: BALL_COLORS[id % BALL_COLORS.length],
-}));
+    x: Math.random() * 86,
+    y: Math.random() * 78,
+    size: 52 + Math.random() * 44,
+    vx: (Math.random() * 240 + 120) * (Math.random() > 0.5 ? 1 : -1),
+    vy: Math.random() * 140 - 70,
+    colors: BALL_COLORS[id % BALL_COLORS.length],
+  }));
 }
 
 export default function HomePage() {
@@ -41,7 +45,119 @@ export default function HomePage() {
   const [picked, setPicked] = useState<string | null>(null);
   const [pickedId, setPickedId] = useState<number | null>(null);
   const [slowMo, setSlowMo] = useState(false);
+  const [soundOn, setSoundOn] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const fadeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pendingAutoEnableRef = useRef(false);
   const emojis = useMemo(() => generateRound(), [started]);
+
+  useEffect(() => {
+    const audio = new Audio("/audio/forest.mp3");
+    audio.loop = true;
+    audio.preload = "auto";
+    audio.volume = 0;
+    audioRef.current = audio;
+
+    const savedSound = window.localStorage.getItem(AMBIENT_STORAGE_KEY);
+    if (savedSound === "on") {
+      pendingAutoEnableRef.current = true;
+      setSoundOn(true);
+    }
+
+    return () => {
+      if (fadeIntervalRef.current) {
+        clearInterval(fadeIntervalRef.current);
+        fadeIntervalRef.current = null;
+      }
+
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+        audioRef.current.load();
+      }
+
+      audioRef.current = null;
+    };
+  }, []);
+
+  const clearFadeInterval = () => {
+    if (fadeIntervalRef.current) {
+      clearInterval(fadeIntervalRef.current);
+      fadeIntervalRef.current = null;
+    }
+  };
+
+  const fadeTo = (targetVolume: number, onComplete?: () => void) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    clearFadeInterval();
+    fadeIntervalRef.current = setInterval(() => {
+      const current = audio.volume;
+      const direction = targetVolume > current ? 1 : -1;
+      const next = Number((current + direction * FADE_STEP).toFixed(3));
+      const reachedTarget = direction > 0 ? next >= targetVolume : next <= targetVolume;
+
+      audio.volume = reachedTarget ? targetVolume : Math.min(1, Math.max(0, next));
+
+      if (reachedTarget) {
+        clearFadeInterval();
+        onComplete?.();
+      }
+    }, FADE_INTERVAL_MS);
+  };
+
+  const playAmbient = async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    try {
+      await audio.play();
+      fadeTo(AMBIENT_TARGET_VOLUME);
+      pendingAutoEnableRef.current = false;
+      setSoundOn(true);
+      window.localStorage.setItem(AMBIENT_STORAGE_KEY, "on");
+    } catch {
+      setSoundOn(false);
+    }
+  };
+
+  const pauseAmbient = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    fadeTo(0, () => {
+      audio.pause();
+    });
+
+    setSoundOn(false);
+    pendingAutoEnableRef.current = false;
+    window.localStorage.setItem(AMBIENT_STORAGE_KEY, "off");
+  };
+
+  useEffect(() => {
+    const tryAutoEnable = () => {
+      if (!pendingAutoEnableRef.current) return;
+      void playAmbient();
+    };
+
+    window.addEventListener("pointerdown", tryAutoEnable, { once: true });
+    window.addEventListener("keydown", tryAutoEnable, { once: true });
+
+    return () => {
+      window.removeEventListener("pointerdown", tryAutoEnable);
+      window.removeEventListener("keydown", tryAutoEnable);
+    };
+  }, []);
+
+  const toggleAmbient = async () => {
+    if (soundOn) {
+      pauseAmbient();
+      return;
+    }
+
+    await playAmbient();
+  };
 
   const handleStart = () => {
     setPicked(null);
@@ -103,6 +219,14 @@ export default function HomePage() {
             }}
           />
         )}
+
+        <button
+          type="button"
+          onClick={toggleAmbient}
+          className="rounded-full border border-white/40 bg-white/25 px-4 py-2 text-xs font-medium text-purple-800 shadow-lg backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:bg-white/40"
+        >
+          {soundOn ? "🌿 Forest Ambient" : "🔈 Sound Off"}
+        </button>
       </div>
 
       <RevealModal value={picked ?? ""} open={Boolean(picked)} />

@@ -39,7 +39,6 @@ function generateRound() {
 
     size: 52 + Math.random() * 44,
 
-    // ความเร็วเริ่มต้น
     vx:
       (Math.random() * 420 + 220) *
       (Math.random() > 0.5 ? 1 : -1),
@@ -63,20 +62,22 @@ export default function HomePage() {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  const fadeRef = useRef<NodeJS.Timeout | null>(null);
+
   const emojis = useMemo(() => generateRound(), [started]);
 
   useEffect(() => {
     const saved = localStorage.getItem("ambient-sound");
 
-    // เสียงป่า ambience
     const audio = new Audio(
       "https://cdn.pixabay.com/download/audio/2021/08/09/audio_c6ccf98b1d.mp3"
     );
 
     audio.loop = true;
-    audio.volume = 0.22;
     audio.preload = "auto";
     audio.crossOrigin = "anonymous";
+
+    audio.volume = 0.22;
 
     audioRef.current = audio;
 
@@ -86,26 +87,37 @@ export default function HomePage() {
 
     return () => {
       audio.pause();
-      audioRef.current = null;
+
+      if (fadeRef.current) {
+        clearInterval(fadeRef.current);
+      }
     };
   }, []);
+
+  const clearFade = () => {
+    if (fadeRef.current) {
+      clearInterval(fadeRef.current);
+    }
+  };
 
   const toggleAmbient = async () => {
     if (!audioRef.current) return;
 
+    clearFade();
+
+    const audio = audioRef.current;
+
+    // ปิดเสียง
     if (soundOn) {
-      // fade out
-      const fadeOut = setInterval(() => {
-        if (!audioRef.current) return;
-
-        if (audioRef.current.volume > 0.02) {
-          audioRef.current.volume -= 0.02;
+      fadeRef.current = setInterval(() => {
+        if (audio.volume > 0.02) {
+          audio.volume -= 0.02;
         } else {
-          audioRef.current.pause();
+          audio.pause();
 
-          audioRef.current.volume = 0.22;
+          audio.volume = 0.22;
 
-          clearInterval(fadeOut);
+          clearFade();
         }
       }, 40);
 
@@ -116,21 +128,19 @@ export default function HomePage() {
       return;
     }
 
-    audioRef.current.volume = 0;
-
+    // เปิดเสียง
     try {
-      await audioRef.current.play();
+      audio.volume = 0;
 
-      // fade in
-      const fadeIn = setInterval(() => {
-        if (!audioRef.current) return;
+      await audio.play();
 
-        if (audioRef.current.volume < 0.22) {
-          audioRef.current.volume += 0.02;
+      fadeRef.current = setInterval(() => {
+        if (audio.volume < 0.22) {
+          audio.volume += 0.02;
         } else {
-          audioRef.current.volume = 0.22;
+          audio.volume = 0.22;
 
-          clearInterval(fadeIn);
+          clearFade();
         }
       }, 40);
 
@@ -138,7 +148,7 @@ export default function HomePage() {
 
       setSoundOn(true);
     } catch (err) {
-      console.error(err);
+      console.error("Audio play failed:", err);
     }
   };
 
@@ -190,12 +200,8 @@ export default function HomePage() {
               key={`${emoji.id}-${started}`}
               animate={
                 slowMo
-                  ? {
-                      opacity: 0.35,
-                    }
-                  : {
-                      opacity: 1,
-                    }
+                  ? { opacity: 0.35 }
+                  : { opacity: 1 }
               }
               transition={{
                 duration: 0.2,
@@ -256,7 +262,6 @@ export default function HomePage() {
           type="button"
           onClick={toggleAmbient}
           className="
-            group
             rounded-full
             border border-white/30
             bg-white/15

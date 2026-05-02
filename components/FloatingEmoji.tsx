@@ -50,7 +50,7 @@ export function FloatingEmoji({
     lastTimeRef.current = time;
 
     const gravity = 980;
-    const restitution = 0.86 / 1.5;
+    const restitution = 2 / 1.5;
     const friction = 0.995;
     const maxX = Math.max(0, window.innerWidth - data.size);
     const maxY = Math.max(0, window.innerHeight - data.size);

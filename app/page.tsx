@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FloatingEmoji } from "@/components/FloatingEmoji";
 import { RevealModal } from "@/components/RevealModal";
@@ -27,13 +27,13 @@ function generateRound() {
   return Array.from({ length: BALL_COUNT }, (_, id) => ({
     id,
     number: numbers[id],
-  x: Math.random() * 86,
-  y: Math.random() * 78,
-  size: 52 + Math.random() * 44,
-  vx: (Math.random() * 240 + 120) * (Math.random() > 0.5 ? 1 : -1),
-  vy: Math.random() * 140 - 70,
-  colors: BALL_COLORS[id % BALL_COLORS.length],
-}));
+    x: Math.random() * 86,
+    y: Math.random() * 78,
+    size: 52 + Math.random() * 44,
+    vx: (Math.random() * 240 + 120) * (Math.random() > 0.5 ? 1 : -1),
+    vy: Math.random() * 140 - 70,
+    colors: BALL_COLORS[id % BALL_COLORS.length],
+  }));
 }
 
 export default function HomePage() {
@@ -41,7 +41,52 @@ export default function HomePage() {
   const [picked, setPicked] = useState<string | null>(null);
   const [pickedId, setPickedId] = useState<number | null>(null);
   const [slowMo, setSlowMo] = useState(false);
+  const [soundOn, setSoundOn] = useState(false);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const ambientNodesRef = useRef<{ oscillators: OscillatorNode[]; gain: GainNode } | null>(null);
   const emojis = useMemo(() => generateRound(), [started]);
+
+  useEffect(() => {
+    return () => {
+      ambientNodesRef.current?.oscillators.forEach((oscillator) => oscillator.stop());
+      audioCtxRef.current?.close();
+      ambientNodesRef.current = null;
+      audioCtxRef.current = null;
+    };
+  }, []);
+
+  const toggleAmbient = async () => {
+    if (!audioCtxRef.current) {
+      const context = new AudioContext();
+      const gain = context.createGain();
+      gain.gain.value = 0.03;
+      gain.connect(context.destination);
+
+      const frequencies = [174.61, 261.63, 329.63];
+      const oscillators = frequencies.map((frequency) => {
+        const oscillator = context.createOscillator();
+        oscillator.type = "sine";
+        oscillator.frequency.value = frequency;
+        oscillator.connect(gain);
+        oscillator.start();
+        return oscillator;
+      });
+
+      audioCtxRef.current = context;
+      ambientNodesRef.current = { oscillators, gain };
+    }
+
+    if (!audioCtxRef.current) return;
+
+    if (soundOn) {
+      await audioCtxRef.current.suspend();
+      setSoundOn(false);
+      return;
+    }
+
+    await audioCtxRef.current.resume();
+    setSoundOn(true);
+  };
 
   const handleStart = () => {
     setPicked(null);
@@ -103,6 +148,14 @@ export default function HomePage() {
             }}
           />
         )}
+
+        <button
+          type="button"
+          onClick={toggleAmbient}
+          className="rounded-full border border-purple-500/35 bg-white/75 px-4 py-2 text-xs font-medium text-purple-700 shadow-sm backdrop-blur transition hover:bg-white"
+        >
+          {soundOn ? "🔊 เสียง: เปิด" : "🔈 เสียง: ปิด"}
+        </button>
       </div>
 
       <RevealModal value={picked ?? ""} open={Boolean(picked)} />

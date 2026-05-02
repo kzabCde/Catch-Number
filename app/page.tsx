@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FloatingEmoji } from "@/components/FloatingEmoji";
 import { RevealModal } from "@/components/RevealModal";
 import { BackgroundEffects } from "@/components/BackgroundEffects";
 import { StartButton } from "@/components/StartButton";
+import { createForestAmbientUrl } from "@/app/forestAmbient";
 
 const BALL_COLORS: [string, string][] = [
   ["#ff4d6d", "#ffd166"],
@@ -16,6 +17,8 @@ const BALL_COLORS: [string, string][] = [
   ["#90e0ef", "#0077b6"],
 ];
 const BALL_COUNT = 20;
+const AMBIENT_TARGET_VOLUME = 0.22;
+const FADE_DURATION_MS = 900;
 
 function generateRound() {
   const numbers = Array.from({ length: 100 }, (_, i) => i.toString().padStart(2, "0"));
@@ -27,13 +30,13 @@ function generateRound() {
   return Array.from({ length: BALL_COUNT }, (_, id) => ({
     id,
     number: numbers[id],
-  x: Math.random() * 86,
-  y: Math.random() * 78,
-  size: 52 + Math.random() * 44,
-  vx: (Math.random() * 240 + 120) * (Math.random() > 0.5 ? 1 : -1),
-  vy: Math.random() * 140 - 70,
-  colors: BALL_COLORS[id % BALL_COLORS.length],
-}));
+    x: Math.random() * 86,
+    y: Math.random() * 78,
+    size: 52 + Math.random() * 44,
+    vx: (Math.random() * 240 + 120) * (Math.random() > 0.5 ? 1 : -1),
+    vy: Math.random() * 140 - 70,
+    colors: BALL_COLORS[id % BALL_COLORS.length],
+  }));
 }
 
 export default function HomePage() {
@@ -41,21 +44,119 @@ export default function HomePage() {
   const [picked, setPicked] = useState<string | null>(null);
   const [pickedId, setPickedId] = useState<number | null>(null);
   const [slowMo, setSlowMo] = useState(false);
+  const [soundOn, setSoundOn] = useState(false);
+  const [soundStatus, setSoundStatus] = useState<"idle" | "playing" | "off">("off");
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const fadeRafRef = useRef<number | null>(null);
   const emojis = useMemo(() => generateRound(), [started]);
 
-  const handleStart = () => {
+  useEffect(() => {
+    const audio = new Audio(createForestAmbientUrl());
+    audio.loop = true;
+    audio.preload = "auto";
+    audio.volume = 0;
+    audioRef.current = audio;
+
+    return () => {
+      if (fadeRafRef.current !== null) {
+        cancelAnimationFrame(fadeRafRef.current);
+        fadeRafRef.current = null;
+      }
+
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+        audioRef.current.load();
+      }
+
+      audioRef.current = null;
+    };
+  }, []);
+
+  const clearFadeFrame = useCallback(() => {
+    if (fadeRafRef.current !== null) {
+      cancelAnimationFrame(fadeRafRef.current);
+      fadeRafRef.current = null;
+    }
+  }, []);
+
+  const fadeTo = useCallback((targetVolume: number, onComplete?: () => void) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    clearFadeFrame();
+    const startVolume = audio.volume;
+    const startTime = performance.now();
+
+    const tick = (time: number) => {
+      const elapsed = time - startTime;
+      const progress = Math.min(1, elapsed / FADE_DURATION_MS);
+      audio.volume = startVolume + (targetVolume - startVolume) * progress;
+
+      if (progress >= 1) {
+        audio.volume = targetVolume;
+        clearFadeFrame();
+        onComplete?.();
+        return;
+      }
+
+      fadeRafRef.current = requestAnimationFrame(tick);
+    };
+
+    fadeRafRef.current = requestAnimationFrame(tick);
+  }, [clearFadeFrame]);
+
+  const playAmbient = useCallback(async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    try {
+      await audio.play();
+      fadeTo(AMBIENT_TARGET_VOLUME);
+      setSoundOn(true);
+      setSoundStatus("playing");
+    } catch {
+      setSoundOn(false);
+      setSoundStatus("off");
+    }
+  }, [fadeTo]);
+
+  const pauseAmbient = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    fadeTo(0, () => {
+      audio.pause();
+    });
+    
+    setSoundOn(false);
+    setSoundStatus("off");
+  }, [fadeTo]);
+
+  const toggleAmbient = useCallback(async () => {
+    setSoundStatus("idle");
+
+    if (soundOn) {
+      pauseAmbient();
+      return;
+    }
+
+    await playAmbient();
+  }, [pauseAmbient, playAmbient, soundOn]);
+
+  const handleStart = useCallback(() => {
     setPicked(null);
     setPickedId(null);
     setStarted((prev) => !prev);
-  };
+  }, []);
 
-  const onPick = (value: string, id: number) => {
+  const onPick = useCallback((value: string, id: number) => {
     if (picked) return;
     setSlowMo(true);
     setPicked(value);
     setPickedId(id);
     setTimeout(() => setSlowMo(false), 650);
-  };
+  }, [picked]);
 
   return (
     <main className="bg-pastel-neon relative flex h-dvh w-full items-center justify-center overflow-hidden p-4">
@@ -103,6 +204,14 @@ export default function HomePage() {
             }}
           />
         )}
+
+        <button
+          type="button"
+          onClick={toggleAmbient}
+          className="rounded-full border border-white/40 bg-white/25 px-4 py-2 text-xs font-medium text-purple-800 shadow-lg backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:bg-white/40"
+        >
+          {soundOn ? "🌿 Forest Ambient" : soundStatus === "idle" ? "⏳ Sound..." : "🔈 Sound Off"}
+        </button>
       </div>
 
       <RevealModal value={picked ?? ""} open={Boolean(picked)} />

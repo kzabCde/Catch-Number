@@ -27,14 +27,13 @@ function generateRound() {
   return Array.from({ length: BALL_COUNT }, (_, id) => ({
     id,
     number: numbers[id],
-    x: Math.random() * 86,
-    y: Math.random() * 78,
-    duration: 5 + Math.random() * 6,
-    size: 52 + Math.random() * 44,
-    driftX: 50 + Math.random() * 36,
-    driftY: 45 + Math.random() * 38,
-    colors: BALL_COLORS[id % BALL_COLORS.length],
-  }));
+  x: Math.random() * 86,
+  y: Math.random() * 78,
+  size: 52 + Math.random() * 44,
+  vx: (Math.random() * 240 + 120) * (Math.random() > 0.5 ? 1 : -1),
+  vy: Math.random() * 140 - 70,
+  colors: BALL_COLORS[id % BALL_COLORS.length],
+}));
 }
 
 export default function HomePage() {

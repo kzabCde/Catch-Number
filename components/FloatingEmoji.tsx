@@ -46,36 +46,47 @@ export function FloatingEmoji({
       return;
     }
 
-    const dt = Math.min((time - lastTimeRef.current) / 1000, 0.05);
+    const dt = Math.min((time - lastTimeRef.current) / 1000, 0.033);
     lastTimeRef.current = time;
 
-    const gravity = 980;
-    const restitution = 0.86;
-    const friction = 0.995;
+    const gravity = 920;
+    const restitution = 0.84;
+    const friction = 0.997;
+    const bounceBoost = 3;
+    const maxSpeed = 2400;
+    const steps = Math.max(1, Math.ceil(dt / (1 / 120)));
+    const stepDt = dt / steps;
     const maxX = Math.max(0, window.innerWidth - data.size);
     const maxY = Math.max(0, window.innerHeight - data.size);
     const velocity = velocityRef.current;
+    let nextX = x.get();
+    let nextY = y.get();
 
-    velocity.y += gravity * dt;
-    velocity.x *= friction;
+    for (let i = 0; i < steps; i += 1) {
+      velocity.y += gravity * stepDt;
+      velocity.x *= friction;
 
-    let nextX = x.get() + velocity.x * dt;
-    let nextY = y.get() + velocity.y * dt;
+      velocity.x = Math.max(-maxSpeed, Math.min(maxSpeed, velocity.x));
+      velocity.y = Math.max(-maxSpeed, Math.min(maxSpeed, velocity.y));
 
-    if (nextX <= 0) {
-      nextX = 0;
-      velocity.x = Math.abs(velocity.x) * restitution;
-    } else if (nextX >= maxX) {
-      nextX = maxX;
-      velocity.x = -Math.abs(velocity.x) * restitution;
-    }
+      nextX += velocity.x * stepDt;
+      nextY += velocity.y * stepDt;
 
-    if (nextY <= 0) {
-      nextY = 0;
-      velocity.y = Math.abs(velocity.y) * restitution;
-    } else if (nextY >= maxY) {
-      nextY = maxY;
-      velocity.y = -Math.abs(velocity.y) * restitution;
+      if (nextX <= 0) {
+        nextX = 0;
+        velocity.x = Math.abs(velocity.x) * restitution * bounceBoost;
+      } else if (nextX >= maxX) {
+        nextX = maxX;
+        velocity.x = -Math.abs(velocity.x) * restitution * bounceBoost;
+      }
+
+      if (nextY <= 0) {
+        nextY = 0;
+        velocity.y = Math.abs(velocity.y) * restitution * bounceBoost;
+      } else if (nextY >= maxY) {
+        nextY = maxY;
+        velocity.y = -Math.abs(velocity.y) * restitution * bounceBoost;
+      }
     }
 
     x.set(nextX);

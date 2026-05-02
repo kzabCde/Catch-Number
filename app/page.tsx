@@ -7,7 +7,15 @@ import { RevealModal } from "@/components/RevealModal";
 import { BackgroundEffects } from "@/components/BackgroundEffects";
 import { StartButton } from "@/components/StartButton";
 
-const EMOJIS = ["🎈", "🫧", "⭐", "🍀", "🐱", "🌈", "☁️", "💎", "✨"];
+const BALL_COLORS: [string, string][] = [
+  ["#ff4d6d", "#ffd166"],
+  ["#06d6a0", "#118ab2"],
+  ["#8338ec", "#ff006e"],
+  ["#3a86ff", "#00f5d4"],
+  ["#ffbe0b", "#fb5607"],
+  ["#90e0ef", "#0077b6"],
+];
+const BALL_COUNT = 20;
 
 function generateRound() {
   const numbers = Array.from({ length: 100 }, (_, i) => i.toString().padStart(2, "0"));
@@ -16,14 +24,16 @@ function generateRound() {
     [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
   }
 
-  return EMOJIS.map((emoji, id) => ({
+  return Array.from({ length: BALL_COUNT }, (_, id) => ({
     id,
-    emoji,
     number: numbers[id],
-    x: 8 + Math.random() * 80,
-    y: 12 + Math.random() * 70,
-    duration: 2.8 + Math.random() * 1.8,
-  }));
+  x: Math.random() * 86,
+  y: Math.random() * 78,
+  size: 52 + Math.random() * 44,
+  vx: (Math.random() * 240 + 120) * (Math.random() > 0.5 ? 1 : -1),
+  vy: Math.random() * 140 - 70,
+  colors: BALL_COLORS[id % BALL_COLORS.length],
+}));
 }
 
 export default function HomePage() {

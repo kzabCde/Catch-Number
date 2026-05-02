@@ -7,7 +7,7 @@ import { RevealModal } from "@/components/RevealModal";
 import { BackgroundEffects } from "@/components/BackgroundEffects";
 import { StartButton } from "@/components/StartButton";
 
-const BALL_COLORS = [
+const BALL_COLORS: [string, string][] = [
   ["#ff4d6d", "#ffd166"],
   ["#06d6a0", "#118ab2"],
   ["#8338ec", "#ff006e"],

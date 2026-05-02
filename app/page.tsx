@@ -46,6 +46,7 @@ export default function HomePage() {
   const [pickedId, setPickedId] = useState<number | null>(null);
   const [slowMo, setSlowMo] = useState(false);
   const [soundOn, setSoundOn] = useState(false);
+  const [soundStatus, setSoundStatus] = useState<"idle" | "playing" | "off">("off");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fadeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingAutoEnableRef = useRef(false);
@@ -61,7 +62,6 @@ export default function HomePage() {
     const savedSound = window.localStorage.getItem(AMBIENT_STORAGE_KEY);
     if (savedSound === "on") {
       pendingAutoEnableRef.current = true;
-      setSoundOn(true);
     }
 
     return () => {
@@ -116,9 +116,11 @@ export default function HomePage() {
       fadeTo(AMBIENT_TARGET_VOLUME);
       pendingAutoEnableRef.current = false;
       setSoundOn(true);
+      setSoundStatus("playing");
       window.localStorage.setItem(AMBIENT_STORAGE_KEY, "on");
     } catch {
       setSoundOn(false);
+      setSoundStatus("off");
     }
   };
 
@@ -131,6 +133,7 @@ export default function HomePage() {
     });
 
     setSoundOn(false);
+    setSoundStatus("off");
     pendingAutoEnableRef.current = false;
     window.localStorage.setItem(AMBIENT_STORAGE_KEY, "off");
   };
@@ -151,6 +154,8 @@ export default function HomePage() {
   }, []);
 
   const toggleAmbient = async () => {
+    setSoundStatus("idle");
+
     if (soundOn) {
       pauseAmbient();
       return;
@@ -225,7 +230,7 @@ export default function HomePage() {
           onClick={toggleAmbient}
           className="rounded-full border border-white/40 bg-white/25 px-4 py-2 text-xs font-medium text-purple-800 shadow-lg backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:bg-white/40"
         >
-          {soundOn ? "🌿 Forest Ambient" : "🔈 Sound Off"}
+          {soundOn ? "🌿 Forest Ambient" : soundStatus === "idle" ? "⏳ Sound..." : "🔈 Sound Off"}
         </button>
       </div>
 

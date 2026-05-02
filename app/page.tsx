@@ -39,7 +39,7 @@ function generateRound() {
 
     size: 52 + Math.random() * 44,
 
-    // เด้งแรงขึ้น
+    // ความเร็วเริ่มต้น
     vx:
       (Math.random() * 420 + 220) *
       (Math.random() > 0.5 ? 1 : -1),
@@ -61,103 +61,53 @@ export default function HomePage() {
 
   const [soundOn, setSoundOn] = useState(false);
 
-  const audioCtxRef = useRef<AudioContext | null>(null);
-
-  const ambientNodesRef = useRef<{
-    oscillators: OscillatorNode[];
-    gain: GainNode;
-  } | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const emojis = useMemo(() => generateRound(), [started]);
 
   useEffect(() => {
     const saved = localStorage.getItem("ambient-sound");
 
+    // เสียงป่า ambience
+    const audio = new Audio(
+      "https://cdn.pixabay.com/download/audio/2021/08/09/audio_c6ccf98b1d.mp3"
+    );
+
+    audio.loop = true;
+    audio.volume = 0.22;
+    audio.preload = "auto";
+    audio.crossOrigin = "anonymous";
+
+    audioRef.current = audio;
+
     if (saved === "on") {
       setSoundOn(true);
     }
 
     return () => {
-      ambientNodesRef.current?.oscillators.forEach((oscillator) =>
-        oscillator.stop()
-      );
-
-      audioCtxRef.current?.close();
-
-      ambientNodesRef.current = null;
-      audioCtxRef.current = null;
+      audio.pause();
+      audioRef.current = null;
     };
   }, []);
 
   const toggleAmbient = async () => {
-    if (!audioCtxRef.current) {
-      const context = new AudioContext();
-
-      // master volume
-      const gain = context.createGain();
-      gain.gain.value = 0;
-
-      // filter ให้เสียงนุ่ม
-      const filter = context.createBiquadFilter();
-
-      filter.type = "lowpass";
-      filter.frequency.value = 900;
-
-      gain.connect(filter);
-      filter.connect(context.destination);
-
-      // ambient synth
-      const configs = [
-        {
-          freq: 174.61,
-          type: "sine" as OscillatorType,
-        },
-        {
-          freq: 261.63,
-          type: "triangle" as OscillatorType,
-        },
-        {
-          freq: 329.63,
-          type: "sine" as OscillatorType,
-        },
-      ];
-
-      const oscillators = configs.map((item) => {
-        const oscillator = context.createOscillator();
-
-        oscillator.type = item.type;
-        oscillator.frequency.value = item.freq;
-
-        oscillator.connect(gain);
-
-        oscillator.start();
-
-        return oscillator;
-      });
-
-      audioCtxRef.current = context;
-
-      ambientNodesRef.current = {
-        oscillators,
-        gain,
-      };
-    }
-
-    if (!audioCtxRef.current || !ambientNodesRef.current) return;
-
-    const gain = ambientNodesRef.current.gain.gain;
-
-    const now = audioCtxRef.current.currentTime;
+    if (!audioRef.current) return;
 
     if (soundOn) {
       // fade out
-      gain.cancelScheduledValues(now);
+      const fadeOut = setInterval(() => {
+        if (!audioRef.current) return;
 
-      gain.linearRampToValueAtTime(0, now + 0.6);
+        if (audioRef.current.volume > 0.02) {
+          audioRef.current.volume -= 0.02;
+        } else {
+          audioRef.current.pause();
 
-      setTimeout(async () => {
-        await audioCtxRef.current?.suspend();
-      }, 650);
+          audioRef.current.volume = 0.22;
+
+          clearInterval(fadeOut);
+        }
+      }, 40);
 
       localStorage.setItem("ambient-sound", "off");
 
@@ -166,16 +116,30 @@ export default function HomePage() {
       return;
     }
 
-    await audioCtxRef.current.resume();
+    audioRef.current.volume = 0;
 
-    // fade in
-    gain.cancelScheduledValues(now);
+    try {
+      await audioRef.current.play();
 
-    gain.linearRampToValueAtTime(0.035, now + 1.2);
+      // fade in
+      const fadeIn = setInterval(() => {
+        if (!audioRef.current) return;
 
-    localStorage.setItem("ambient-sound", "on");
+        if (audioRef.current.volume < 0.22) {
+          audioRef.current.volume += 0.02;
+        } else {
+          audioRef.current.volume = 0.22;
 
-    setSoundOn(true);
+          clearInterval(fadeIn);
+        }
+      }, 40);
+
+      localStorage.setItem("ambient-sound", "on");
+
+      setSoundOn(true);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleStart = () => {
@@ -280,6 +244,7 @@ export default function HomePage() {
             label="เล่นอีกครั้ง"
             onClick={() => {
               setPicked(null);
+
               setPickedId(null);
 
               setStarted((prev) => !prev);
@@ -308,13 +273,13 @@ export default function HomePage() {
         >
           <span className="flex items-center gap-2">
             <span className="text-sm">
-              {soundOn ? "🔊" : "🔈"}
+              {soundOn ? "🌿" : "🔈"}
             </span>
 
             <span>
               {soundOn
-                ? "Ambient ON"
-                : "Ambient OFF"}
+                ? "Forest Ambient"
+                : "Sound Off"}
             </span>
           </span>
         </button>

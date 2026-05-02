@@ -4,11 +4,14 @@ import { motion } from "framer-motion";
 
 type EmojiData = {
   id: number;
-  emoji: string;
   number: string;
   x: number;
   y: number;
   duration: number;
+  size: number;
+  driftX: number;
+  driftY: number;
+  colors: [string, string];
 };
 
 export function FloatingEmoji({
@@ -25,12 +28,19 @@ export function FloatingEmoji({
       aria-label={`อิโมจิสุ่มเลข ${data.id}`}
       disabled={disabled}
       onClick={() => onPick(data.number, data.id)}
-      className="absolute select-none text-6xl drop-shadow-[0_0_12px_rgba(255,255,255,0.9)] sm:text-7xl"
-      style={{ left: `${data.x}%`, top: `${data.y}%`, filter: "blur(0.1px)" }}
+      className="absolute select-none rounded-full border border-white/70 shadow-[0_8px_24px_rgba(0,0,0,0.25)]"
+      style={{
+        left: `${data.x}%`,
+        top: `${data.y}%`,
+        width: data.size,
+        height: data.size,
+        filter: "blur(0.1px)",
+        background: `radial-gradient(circle at 30% 28%, #ffffffdd 0 18%, ${data.colors[0]} 44%, ${data.colors[1]} 100%)`,
+      }}
       animate={{
-        y: [0, -24, 0, 16, 0],
-        x: [0, 14, -14, 0],
-        rotate: [0, -7, 7, 0],
+        x: [0, data.driftX, 0, -data.driftX, 0],
+        y: [0, -data.driftY, 0, data.driftY, 0],
+        rotate: [0, -9, 9, 0],
       }}
       transition={{
         duration: data.duration,
@@ -39,7 +49,7 @@ export function FloatingEmoji({
       }}
       whileTap={{ scale: 0.9 }}
     >
-      {data.emoji}
+      <span className="sr-only">เลขสุ่ม {data.number}</span>
     </motion.button>
   );
 }

@@ -17,7 +17,7 @@ const BALL_COLORS: [string, string][] = [
   ["#90e0ef", "#0077b6"],
 ];
 const BALL_COUNT = 20;
-const AMBIENT_TARGET_VOLUME = 0.22;
+const AMBIENT_TARGET_VOLUME = 0.1;
 const FADE_DURATION_MS = 900;
 
 function generateRound() {
@@ -46,6 +46,7 @@ export default function HomePage() {
   const [slowMo, setSlowMo] = useState(false);
   const [soundOn, setSoundOn] = useState(false);
   const [soundStatus, setSoundStatus] = useState<"idle" | "playing" | "off">("off");
+  const [respawnToken, setRespawnToken] = useState<Record<number, number>>({});
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fadeRafRef = useRef<number | null>(null);
   const emojis = useMemo(() => generateRound(), [started]);
@@ -151,6 +152,7 @@ export default function HomePage() {
   }, []);
 
   const onPick = useCallback((value: string, id: number) => {
+    setRespawnToken((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
     if (picked) return;
     setSlowMo(true);
     setPicked(value);
@@ -170,7 +172,7 @@ export default function HomePage() {
         <AnimatePresence>
           {emojis.map((emoji) => (
             <motion.div
-              key={`${emoji.id}-${started}`}
+              key={`${emoji.id}-${started}-${respawnToken[emoji.id] ?? 0}`}
               animate={slowMo ? { opacity: 0.35 } : { opacity: 1 }}
               transition={{ duration: 0.2 }}
             >
@@ -200,6 +202,7 @@ export default function HomePage() {
             onClick={() => {
               setPicked(null);
               setPickedId(null);
+              setRespawnToken({});
               setStarted((prev) => !prev);
             }}
           />

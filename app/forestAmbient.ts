@@ -33,14 +33,14 @@ export function createForestAmbientUrl(durationSec = 10, sampleRate = 22050): st
 
   for (let i = 0; i < frameCount; i += 1) {
     const t = i / sampleRate;
-    const wind = hashNoise(i * 0.03) * 0.06 * (0.65 + 0.35 * Math.sin(2 * Math.PI * 0.04 * t));
+    const wind = hashNoise(i * 0.03) * 0.045 * (0.65 + 0.35 * Math.sin(2 * Math.PI * 0.04 * t));
 
     let birds = 0;
-    const chirpPhase = (t * 0.28) % 1;
+    const chirpPhase = (t * 0.11) % 1;
     if (chirpPhase < 0.09) {
       const env = Math.sin((chirpPhase / 0.09) * Math.PI);
       const freq = 1200 + 500 * Math.sin(2 * Math.PI * 7 * chirpPhase);
-      birds += env * 0.14 * Math.sin(2 * Math.PI * freq * t);
+      birds += env * 0.08 * Math.sin(2 * Math.PI * freq * t);
     }
 
     const sample = Math.max(-1, Math.min(1, wind + birds));
